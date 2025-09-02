@@ -1,0 +1,93 @@
+# Simplified Database Requirements for Mumbai Geo-AI Project
+# Save as: requirements-db.txt (GDAL issues fixed)
+
+# ==============================================================================
+# CORE DATABASE DEPENDENCIES (Required for Step 16)
+# ==============================================================================
+
+# SQLAlchemy & Database
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9          # PostgreSQL adapter
+asyncpg==0.29.0                 # Async PostgreSQL driver
+
+# Spatial Database Extensions  
+geoalchemy2==0.14.2             # SQLAlchemy spatial extension
+
+# ==============================================================================
+# ESSENTIAL GEOSPATIAL LIBRARIES (GDAL-Free)
+# ==============================================================================
+
+# Core Spatial Libraries (No GDAL dependency)
+shapely==2.0.2                  # Geometric operations
+pyproj==3.6.1                   # Coordinate transformations
+
+# ==============================================================================
+# WEB & API DEPENDENCIES (Required for Step 16)
+# ==============================================================================
+
+# FastAPI Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic[dotenv]==2.5.2
+pydantic-settings==2.1.0
+
+# HTTP & API Clients
+httpx==0.25.2                  # Async HTTP client
+requests==2.31.0               # HTTP library
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4         # Password hashing
+python-jose[cryptography]==3.3.0  # JWT tokens
+bcrypt==4.1.2                  # Password hashing
+cryptography==41.0.8           # Cryptographic recipes
+
+# ==============================================================================
+# CONFIGURATION & UTILITIES (Required for Step 16)
+# ==============================================================================
+
+# Configuration
+python-dotenv==1.0.0           # Environment variables
+pyyaml==6.0.1                  # YAML configuration
+
+# Data Processing (Basic)
+numpy==1.24.4                  # Numerical computing
+pandas==2.1.4                  # Data manipulation
+
+# Development Utilities
+tqdm==4.66.1                   # Progress bars
+click==8.1.7                   # CLI framework
+rich==13.7.0                   # Rich text and formatting
+
+# ==============================================================================
+# TESTING (Required for Step 18)
+# ==============================================================================
+
+# Testing Framework
+pytest==7.4.3                  # Testing framework
+pytest-asyncio==0.21.1         # Async testing
+pytest-cov==4.1.0              # Coverage reporting
+
+# ==============================================================================
+# OPTIONAL: ADVANCED GEOSPATIAL (Install manually if needed)
+# ==============================================================================
+
+# These require GDAL system dependencies - install separately:
+# fiona==1.9.5                 # Vector data I/O  
+# geopandas==0.14.1            # Spatial dataframes
+# rasterio==1.3.9              # Raster data I/O
+# gdal==3.7.3                  # Requires system GDAL
+
+# ==============================================================================
+# OPTIONAL: ML DEPENDENCIES (For Step 21+)
+# ==============================================================================
+
+# Basic ML (GDAL-free)
+scikit-learn==1.3.2            # General ML algorithms  
+pillow==10.1.0                 # Image processing
+opencv-python==4.8.1.78        # Computer vision
+
+# Deep Learning (install when needed)
+# torch==2.1.1                 # PyTorch for ML models
+# torchvision==0.16.1          # Computer vision models
+# tensorflow==2.15.0           # TensorFlow framework

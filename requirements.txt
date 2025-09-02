@@ -1,0 +1,68 @@
+# requirements.txt
+
+# --- Core Web Framework ---
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0 # Required for BaseSettings
+
+# --- Database & ORM ---
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+sqlalchemy==2.0.23
+alembic==1.12.1
+geoalchemy2==0.14.2
+
+# --- Background Tasks ---
+redis==5.0.1
+rq==1.15.1
+
+# --- Geospatial Libraries ---
+# NOTE: rasterio, geopandas, etc. are often installed via system packages or complex wheels.
+# They are handled in the Dockerfile for the app image.
+# We list them here for reference, but installation happens via Dockerfile/apt/pip.
+# rasterio==1.3.9
+# geopandas==0.14.1
+# shapely==2.0.2
+# fiona==1.9.5
+# pyproj==3.6.1
+
+# --- STAC & Planetary Computer ---
+pystac-client==0.7.5
+planetary-computer==1.0.0
+stackstac==0.5.0
+
+# --- Data Processing ---
+pandas==2.1.3
+numpy==1.25.2
+xarray==2023.11.0
+
+# --- ML Libraries ---
+torch==2.1.1
+torchvision==0.16.1
+segmentation-models-pytorch==0.3.3
+albumentations==1.3.1
+
+# --- Object Storage ---
+minio==7.2.0
+boto3==1.34.0
+
+# --- HTTP Client ---
+httpx==0.25.2
+aiofiles==23.2.1
+
+# --- Data Validation ---
+# pydantic is already listed above
+
+# --- Utilities ---
+python-dotenv==1.0.0
+python-multipart==0.0.6
+Pillow==10.1.0
+
+# --- Alerts ---
+twilio==8.10.0
+
+# --- TiTiler Core (NOTE: This is NOT installed in the app container) ---
+# titiler.core[server] is used in the titiler service container.
+# Installing it here causes dependency conflicts with fastapi/pydantic.
+# We will use the pre-built titiler-pgstac image instead.
