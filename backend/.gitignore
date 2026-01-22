@@ -144,3 +144,6 @@ results/
 docker-compose.override.yml
 
 # Add any other local/secret files you don't want tracked
+*.exe
+minio*
+.minio.sys/
