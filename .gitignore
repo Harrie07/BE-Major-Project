@@ -1,0 +1,15 @@
+# Ignore other project folders (not part of backend repo)
+frontend/
+ml/
+ml-models/
+mumbai-geo-ai-ml-service/
+static/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Binaries
+*.exe
