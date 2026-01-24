@@ -2,17 +2,17 @@
 Clean API router for Mumbai Geo-AI Backend.
 This version avoids problematic imports and works with your existing models.
 """
-from app.api.v1.endpoints import alerts
+from app.api.v1.endpoints import alerts, aoi
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, Dict, Any
 import logging
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.db.database import get_db
-from app.models.models import Job, Detection
+from app.models.models import Job, Detection, AOI  # ← Added AOI import
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,11 @@ api_router = APIRouter()
 
 # --- Pydantic Models for Requests ---
 class JobCreate(BaseModel):
-    name: str
-    parameters: Optional[Dict[Any, Any]] = {}
+    """Schema for creating a change detection job"""
+    aoi_id: int = Field(..., description="Area of Interest ID")
+    date_from: datetime = Field(..., description="Start date for analysis")
+    date_to: datetime = Field(..., description="End date for analysis")
+    name: Optional[str] = Field(None, description="Optional job name")
 
 class DetectionCreate(BaseModel):
     job_id: int
@@ -40,23 +43,20 @@ async def list_jobs(
     try:
         jobs = db.query(Job).offset(skip).limit(limit).all()
         total_jobs = db.query(Job).count()
-        return {
-            "jobs": [
-                {
-                    "id": job.id,
-                    "name": job.name,
-                    "status": job.status,
-                    "created_at": job.created_at.isoformat() if job.created_at else None,
-                    "updated_at": job.updated_at.isoformat() if job.updated_at else None,
-                    "parameters": job.parameters,
-                    "result_url": job.result_url,
-                    "error_message": job.error_message
-                } for job in jobs
-            ],
-            "total": total_jobs,
-            "skip": skip,
-            "limit": limit
-        }
+        return [
+            {
+                "id": job.id,
+                "aoi_id": job.aoi_id,
+                "name": job.name,
+                "status": job.status,
+                "progress": 0,  # Default progress
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+                "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+                "parameters": job.parameters,
+                "result_url": job.result_url,
+                "error_message": job.error_message
+            } for job in jobs
+        ]
     except Exception as e:
         logger.error(f"Error fetching jobs: {e}")
         raise HTTPException(
@@ -66,28 +66,51 @@ async def list_jobs(
 
 @api_router.post("/jobs/", tags=["Jobs"], status_code=status.HTTP_201_CREATED)
 async def create_job(job_data: JobCreate, db: Session = Depends(get_db)):
-    """Create a new job."""
+    """Create a new change detection job."""
     try:
+        # Verify AOI exists
+        aoi = db.query(AOI).filter(AOI.id == job_data.aoi_id).first()
+        if not aoi:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"AOI with id {job_data.aoi_id} not found"
+            )
+        
+        # Create job name if not provided
+        job_name = job_data.name or f"Detection - {aoi.name} - {datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Create job
         db_job = Job(
-            name=job_data.name,
-            parameters=job_data.parameters,
+            name=job_name,
+            aoi_id=job_data.aoi_id,
+            parameters={
+                "date_from": job_data.date_from.isoformat(),
+                "date_to": job_data.date_to.isoformat()
+            },
             status="pending"
         )
         db.add(db_job)
         db.commit()
         db.refresh(db_job)
         
+        logger.info(f"✅ Created job {db_job.id} for AOI {job_data.aoi_id} ({aoi.name})")
+        
         return {
             "id": db_job.id,
+            "aoi_id": db_job.aoi_id,
             "name": db_job.name,
             "status": db_job.status,
+            "progress": 0,
             "created_at": db_job.created_at.isoformat() if db_job.created_at else None,
+            "updated_at": db_job.updated_at.isoformat() if db_job.updated_at else None,
             "parameters": db_job.parameters,
-            "message": "Job created successfully"
+            "error_message": None
         }
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Error creating job: {e}")
+        logger.error(f"❌ Error creating job: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create job: {str(e)}"
@@ -105,8 +128,10 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
             )
         return {
             "id": job.id,
+            "aoi_id": job.aoi_id,
             "name": job.name,
             "status": job.status,
+            "progress": 0,
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "updated_at": job.updated_at.isoformat() if job.updated_at else None,
             "parameters": job.parameters,
@@ -309,5 +334,11 @@ async def simple_test():
         "endpoints_available": True
     }
 
+# ========================================
+# ✅ INCLUDE SUB-ROUTERS
+# ========================================
 # Include alert-related routes
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
+
+# Include AOI routes
+api_router.include_router(aoi.router, prefix="/aoi", tags=["AOI"])

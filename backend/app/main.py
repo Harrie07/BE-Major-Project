@@ -5,11 +5,13 @@ from contextlib import asynccontextmanager
 import logging
 from typing import List
 
+
 # Import your settings, database, and models
 from app.core.config import settings
 from app.api.v1.api import api_router  # Import the API router
 from app.db.database import engine, get_db, Base
 from app.models import models # Import models to ensure they are registered with Base
+
 
 # Configure logging based on settings
 logging.basicConfig(
@@ -18,11 +20,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # --- Lifespan Events ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events: startup and shutdown."""
     logger.info("🚀 Starting Mumbai Geo-AI Backend...")
+
 
     # --- Startup ---
     try:
@@ -31,6 +35,7 @@ async def lifespan(app: FastAPI):
         if len(Base.metadata.tables) == 0:
              logger.warning("Warning: No tables found in Base.metadata. Check if models are correctly imported and use the right Base instance.")
 
+
         # Log the database URL being used (mask password)
         masked_url = settings.DATABASE_URL.replace(
             settings.DATABASE_URL.split("@")[0].split("//")[1] + "@", 
@@ -38,10 +43,12 @@ async def lifespan(app: FastAPI):
         ) if "@" in settings.DATABASE_URL else settings.DATABASE_URL
         logger.info(f"Attempting to connect and create tables for database: {masked_url}")
 
+
         # Create database tables if they don't exist
         logger.info("Attempting to create tables...")
         Base.metadata.create_all(bind=engine)
         logger.info("✅ Database tables created/verified successfully")
+
 
         # Verify connection works
         from sqlalchemy import text
@@ -49,15 +56,18 @@ async def lifespan(app: FastAPI):
             result = conn.execute(text("SELECT 1"))
             logger.info("✅ Database connection verified")
 
+
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}", exc_info=True)
         # You might want to raise here to prevent startup if DB is critical
         # raise
 
+
     logger.info("✅ Application startup complete")
     yield
     # --- Shutdown ---
     logger.info("🛑 Shutting down Mumbai Geo-AI Backend...")
+
 
 # --- Create FastAPI App ---
 app = FastAPI(
@@ -70,17 +80,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# --- Configure CORS ---
+
+# --- Configure CORS (UPDATED FOR FRONTEND INTEGRATION) ---
+# Allow all origins in development, restrict in production
+allowed_origins = [
+    "http://localhost:3000",          # Next.js dev server
+    "http://127.0.0.1:3000",          # Alternative localhost
+    "http://localhost:5173",          # Vite (if used)
+    "http://localhost:8000",          # Same origin
+]
+
+# If DEBUG mode, allow all origins
+if settings.DEBUG:
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allow_headers=["*"],
+    allow_methods=["*"],              # Allow all HTTP methods
+    allow_headers=["*"],              # Allow all headers
+    expose_headers=["*"],             # Expose all response headers
+    max_age=3600,                     # Cache preflight requests for 1 hour
 )
+
 
 # --- Include API Routes ---
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
 
 # --- Root Endpoint ---
 @app.get("/")
@@ -91,12 +118,16 @@ async def root():
         "version": settings.APP_VERSION,
         "docs": "/docs",
         "api_endpoints": f"{settings.API_V1_STR}/",
-        "status": "running"
+        "status": "running",
+        "cors_enabled": True,
+        "frontend_url": "http://localhost:3000"
     }
+
 
 # --- Enhanced Health Check ---
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
 
 @app.get("/health")
 async def health_check(db: Session = Depends(get_db)):
@@ -119,7 +150,8 @@ async def health_check(db: Session = Depends(get_db)):
             "tables_count": table_count,
             "app_name": settings.APP_NAME,
             "environment": settings.ENVIRONMENT,
-            "api_version": settings.API_V1_STR
+            "api_version": settings.API_V1_STR,
+            "cors_enabled": True
         }
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -127,6 +159,18 @@ async def health_check(db: Session = Depends(get_db)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Service unhealthy: Database connection failed - {str(e)}"
         )
+
+
+# --- CORS Test Endpoint (for debugging) ---
+@app.get("/api/v1/test-cors")
+async def test_cors():
+    """Test endpoint to verify CORS is working"""
+    return {
+        "message": "CORS is working!",
+        "allowed_origins": allowed_origins,
+        "timestamp": "2026-01-23T14:38:00+05:30"
+    }
+
 
 # --- Main Execution Block ---
 if __name__ == "__main__":
